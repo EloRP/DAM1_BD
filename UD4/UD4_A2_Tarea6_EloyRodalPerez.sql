@@ -1,0 +1,83 @@
+--EJERCICIO 1
+--a
+IF DB_ID ('BD_AlterDB1') IS NOT NULL
+DROP DATABASE BD_AlterDB1;
+CREATE DATABASE BD_AlterDB1ALTER 
+--b
+ALTER DATABASE BD_AlterDB1
+ADD FILE
+( NAME = 'Archivo1',
+FILENAME ='C:\basedatos\Tarea6\archivo1.ndf',
+SIZE = 3MB,
+FILEGROWTH = 2MB )
+--c
+ALTER DATABASE BD_AlterDB1
+MODIFY FILE
+(NAME= BD_AlterDB1_Data,
+SIZE= 5MB)
+-- No puedo aumentarlo a 3MB porque no le puedo dar un tamaño más pequeño del ya que tiene
+
+--EJERCICIO 2
+--a
+IF DB_ID ('BD_AlterDB2') IS NOT NULL
+DROP DATABASE BD_AlterDB2;
+CREATE DATABASE BD_AlterDB2
+ON PRIMARY
+( NAME = 'Archivo2',
+FILENAME ='C:\basedatos\Tarea6\archivo2.mdf',
+SIZE = 3MB,
+MAXSIZE = 4MB )
+--b
+ALTER DATABASE BD_AlterDB2
+MODIFY FILE
+(NAME= Archivo2,
+SIZE = 6MB)
+-- No lo permite, ya que el tamaño máximo sigue siendo 4mb, por lo que no puede tener más tamaño.
+--EJERCICIO 3
+--a
+IF DB_ID ('BD_AlterDB3') IS NOT NULL
+DROP DATABASE BD_AlterDB3;
+CREATE DATABASE BD_AlterDB3
+ON PRIMARY
+( NAME = 'BD_AlterDB3_Data1',
+FILENAME ='C:\basedatos\Tarea6\BD_AlterDB3_Data1.mdf',
+SIZE = 3MB,
+MAXSIZE = 10MB,
+FILEGROWTH = 1MB )
+--b
+ALTER DATABASE BD_AlterDB3
+ADD FILE
+( NAME = 'BD_AlterDB3_Data2',
+FILENAME ='C:\basedatos\Tarea6\BD_AlterDB3_Data2.ndf',
+SIZE = 15MB,
+FILEGROWTH = 2MB )
+--c
+ALTER DATABASE BD_AlterDB3
+ADD FILEGROUP Grupo1
+ALTER DATABASE BD_Alter3
+ADD FILE
+( NAME = 'BD_AlterDB3_Data3',
+FILENAME ='C:\basedatos\Tarea6\BD_AlterDB3_Data3.ndf',
+SIZE = 1MB,
+FILEGROWTH = 10%),
+( NAME = 'BD_AlterDB3_Data4',
+FILENAME ='C:\basedatos\Tarea6\BD_AlterDB3_Data4.ndf',
+SIZE = 1MB,
+FILEGROWTH = 10% )
+TO FILEGROUP Grupo1 ALTER DATABASE BD_Alter3
+MODIFY FILEGROUP Grupo1 DEFAULT 
+--EJERCICIO 4
+ALTER DATABASE BD_AlterDB3
+REMOVE FILE BD_AlterDB3_Data3 
+--EJERCICIO 5
+ALTER DATABASE BD_AlterDB3
+MODIFY FILE
+(NAME= BD_AlterDB3_Data1,
+SIZE = 4MB,
+FILEGROWTH = 3MB)
+--EJERCICIO 6
+ALTER DATABASE BD_AlterDB3
+MODIFY FILEGROUP Grupo1 READ_ONLY
+--EJERCICIO 7
+ALTER DATABASE BD_AlterDB3
+REMOVE FILEGROUP Grupo1 

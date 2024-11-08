@@ -1,0 +1,297 @@
+--ELOY RODAL PÉREZ
+
+IF EXISTS (SELECT * FROM sys.databases WHERE name = 'BDVideoclub')
+DROP DATABASE BDVideoclub ;
+go
+
+CREATE DATABASE BDVideoclub
+
+ON PRIMARY
+(
+		NAME= 'ArchivoPrincipal',
+		FILENAME='C:\basedatos\BDVideoclub\ArchivoPrincipal.mdf',
+		SIZE = 5MB,
+		FILEGROWTH=2MB
+		),
+		FILEGROUP Datos_peliculas DEFAULT (
+		NAME= 'datosPeliculas1',
+		FILENAME='C:\basedatos\BDVideoclub\datosPeliculas1',
+		SIZE = 20MB,
+		MAXSIZE = 60MB,
+		FILEGROWTH = 10%
+	), (
+		NAME='datosPeliculas2',
+		FILENAME='C:\basedatos\BDVideoclub\Datos_Peliculas\datosPeliculas2.ndf',
+		SIZE = 20MB,
+		MAXSIZE = 60MB,
+		FILEGROWTH = 10%
+	)
+	
+use BDVideoClub
+CREATE TYPE Fecha FROM smalldatetime NOT NULL
+
+--TIPO DE DATOS NACIONALIDAD
+IF EXISTS (SELECT * FROM sys.types WHERE name = 'Nacionalidad')
+	DROP TYPE Nacionalidad
+go
+
+CREATE TYPE TIPO_Nacionalidad FROM varchar(15) NOT NULL
+go
+
+--TIPO DE DATOS FECHA
+IF EXISTS (SELECT * FROM sys.types WHERE name = 'Fecha')
+	DROP TYPE Fecha
+go
+CREATE TYPE Fecha FROM smalldatetime NOT NULL
+go
+
+--TABLA PELICULA
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'Pelicula')
+	DROP TABLE PELICULA
+go
+CREATE TABLE PELICULA (
+	IdPelicula char(7) NOT NULL,
+	Titulo varchar(20) NOT NULL,
+	AñoProduccion smallint NOT NULL,
+	Genero varchar(15) NOT NULL,
+	Duracion smallint NOT NULL,
+	Nacionalidad TIPO_Nacionalidad NULL,
+	CodCategoria tinyint NOT NULL
+
+	CONSTRAINT PK_IdPelicula_PELICULA PRIMARY KEY (IdPelicula),			--ordenar constraints, primero keys luego checks
+	CONSTRAINT UK_Titulos_AñoProduccion_PELICULA UNIQUE (Titulo, AñoProduccion),
+	CONSTRAINT CK_IdPelicula_Forma CHECK (IdPelicula LIKE '[PF][AEIOU] [-][0-9][0-9][0-9][0-9]')
+
+)
+go
+exec sp_helpconstraint PELICULA
+
+
+--TABLA EJEMPLAR
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'EJEMPLAR')
+	DROP TABLE EJEMPLAR
+go
+CREATE TABLE EJEMPLAR (
+	IdPelicula char(7) NOT NULL,
+	IdEjemplar tinyint NOT NULL,
+	Estado char(1) NOT NULL CONSTRAINT DF_Estado_EJEMPLAR DEFAULT 'B',
+	FechaDeCompra Fecha NOT NULL CONSTRAINT DF_FechaDeCompra_EJEMPLAR DEFAULT dateAdd(day, -2, getDate())
+	
+	CONSTRAINT PK_EJMPLAR PRIMARY KEY (IdPelicula, IdEjemplar),
+	CONSTRAINT FK_IdPelicula_EJEMPLAR FOREIGN KEY (IdPelicula) REFERENCES PELICULA (IdPelicula) ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT CK_Estado_EJEMPLAR CHECK (Estado IN ('B', 'R', 'M')),
+)
+
+--TABLA SOCIO
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'SOCIO')
+	DROP TABLE SOCIO
+go
+CREATE TABLE SOCIO (
+	Numero smallint NOT NULL,
+	DNI char(9) NOT NULL,
+	Nombre varchar(20) NOT NULL,
+	Apellidos varchar(20) NOT NULL,
+	Direccion varchar(40) NOT NULL, 
+	Telefono char(9) NOT NULL,
+	FechaDeAlta Fecha NOT NULL CONSTRAINT DF_FechaDeAlta DEFAULT getDate()
+	
+	CONSTRAINT PK_Numero_SOCIO PRIMARY KEY (Numero),
+	CONSTRAINT UK_DNI_SOCIO UNIQUE (DNI),
+	CONSTRAINT CK_DNI_SOCIO CHECK (DNI LIKE '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][A-Z]'),
+	CONSTRAINT CK_Telefono_SOCIO CHECK (Telefono LIKE '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]')
+) ON [PRIMARY]
+
+--TABLA ALQUILER
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'ALQUILER')
+	DROP TABLE ALQUILER
+go
+CREATE TABLE ALQUILER (
+	IdPelicula char(7) NOT NULL,
+	IdEjemplar tinyint NOT NULL,
+	FechaAlq Fecha NOT NULL,
+	NumeroSocio smallint NOT NULL,
+	FechaEstimadaDev Fecha NOT NULL CONSTRAINT DF_FechaEstimadaDev_ALQUILER
+									 DEFAULT dateAdd(day, +15, getDate()),
+	FechaDev Fecha NULL
+	
+	CONSTRAINT PK_ALQUILER PRIMARY KEY (IdPelicula, IdEjemplar, FechaAlq),
+	CONSTRAINT FK_ClavePrimaria_ALQUILER 
+								FOREIGN KEY (IdPelicula, IdEjemplar)
+								REFERENCES EJEMPLAR(IdPelicula, IdEjemplar)
+								ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT FK_NumeroSecio_ALQUILER FOREIGN KEY (NumeroSocio) REFERENCES SOCIO(Numero) 
+										ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT CK_FechaDevMayorQueFechaAlquiler_ALQUILER CHECK (FechaDev > FechaAlq)
+)
+go
+
+-- TABLA ACTOR
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'ACTOR')
+	DROP TABLE ACTOR
+go
+CREATE TABLE ACTOR (
+	Nombre varchar(25) NOT NULL,
+	Nacionalidad TIPO_Nacionalidad NOT NULL,
+	Sexo char(1) NOT NULL CONSTRAINT DF_Sexo_Actor DEFAULT 'M'
+	
+	CONSTRAINT PK_Nombre_Actor PRIMARY KEY (Nombre)
+	CONSTRAINT CK_Sexo_ACTOR CHECK (Sexo LIKE '[HM]')
+)
+go
+
+-- TABLA ACTUA
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'ACTUA')
+	DROP TABLE ACTUA
+go
+CREATE TABLE ACTUA (
+	NombreActor varchar(25) NOT NULL,
+	IdPelicula char (7) NOT NULL,
+	PrincSec char(1) NOT NULL CONSTRAINT DF_Papel_ACTUA DEFAULT 'P'
+	
+	CONSTRAINT PK_ACTUA PRIMARY KEY (NombreActor, IdPelicula),
+	CONSTRAINT FK_NombreActor_ACTUA FOREIGN KEY (NombreActor) REFERENCES ACTOR(Nombre)
+												 ON DELETE NO ACTION ON UPDATE NO ACTION,
+	CONSTRAINT FK_IdPelicula_ACTUA FOREIGN KEY (IdPelicula) REFERENCES PELICULA(IdPelicula)
+													ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT CK_Papel_ACTUA CHECK (PrincSec LIKE '[PS]')
+)
+go
+
+--TABLA DIRECTOR
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'DIRECTOR')
+	DROP TABLE DIRECTOR
+go
+CREATE TABLE DIRECTOR (
+	Nombre varchar(25) NOT NULL,
+	Nacionalidad TIPO_Nacionalidad NOT NULL
+	
+	CONSTRAINT PK_DIRECTOR PRIMARY KEY (Nombre)
+)
+go
+
+--TABLA DIRIGE
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'DIRIGE')
+	DROP TABLE DIRIGE
+go
+CREATE TABLE DIRIGE (
+	IdPelicula char(7) NOT NULL,
+	NombreDirector varchar(25) NOT NULL
+	
+	CONSTRAINT PK_DIRIGE PRIMARY KEY (IdPelicula, NombreDirector),
+	CONSTRAINT FK_IdPelicula FOREIGN KEY (IdPelicula) REFERENCES PELICULA(IdPelicula)
+												ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT FK_NombreDirector_DIRIGE FOREIGN KEY (NombreDirector) REFERENCES DIRECTOR(Nombre)
+												ON DELETE NO ACTION ON UPDATE NO ACTION
+)
+go
+--TABLA FAMILIAR
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'FAMILIAR')
+	DROP TABLE FAMILIAR
+go
+CREATE TABLE FAMILIAR (
+	DNI char(9) NOT NULL,
+	Nombre varchar(60),
+	Parentesco varchar(15),
+	FechaNacimiento Fecha,
+	NumeroSocio smallint,
+
+	CONSTRAINT PK_FAMILIAR PRIMARY KEY (DNI),
+	CONSTRAINT FK_NumeroSocio_FAMILIAR FOREIGN KEY (NumeroSocio) REFERENCES SOCIO(Numero)
+													ON DELETE CASCADE ON UPDATE CASCADE
+)
+go
+
+--TABLA CATEGORIA
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'CATEGORIA')
+	DROP TABLE CATEGORIA
+go
+CREATE TABLE CATEGORIA (
+	CodCategoria tinyint NOT NULL identity(1,5),
+	Precio money,
+	Descripcion varchar(30)
+
+	CONSTRAINT PK_CATEGORIA PRIMARY KEY (CodCategoria)
+)
+go
+
+--ALTERACIONES TABLA PELICULA
+ALTER TABLE PELICULA
+	ADD CONSTRAINT FK_CodCategoria_PELICULA FOREIGN KEY (CodCategoria) 
+	REFERENCES CATEGORIA(CodCategoria) ON DELETE NO ACTION ON UPDATE CASCADE
+
+/* C - MODIFICACIONES. */
+
+--1
+ALTER TABLE ALQUILER
+	ADD PrecioAlquiler money not null CONSTRAINT DF_PrecioAlquiler_ALQUILER DEFAULT '4' WITH VALUES
+go
+--2
+ALTER TABLE ALQUILER
+	ADD CONSTRAINT DF_FechaDeAlquiler_ALQUILER DEFAULT getDate() FOR FechaAlq WITH VALUES
+go
+ALTER TABLE SOCIO
+	ADD CONSTRAINT DF_FechaDeAlta_SOCIO DEFAULT getDate() FOR FechaDeAlta WITH VALUES
+go	
+--3
+ALTER TABLE CATEGORIA
+	WITH CHECK ADD CONSTRAINT CK_Precio_CATEGORIA CHECK (Precio > 0 AND Precio < 300)
+go
+
+--4.
+ALTER TABLE ALQUILER
+	DROP DF_PrecioAlquiler_ALQUILER
+go
+ALTER TABLE ALQUILER
+	DROP COLUMN PrecioAlquiler
+go									--PRIMERO HAY QUE BORRAR LA RESTRICCIÓN DEFAULT DEL CAMPO.
+
+--5.1
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'DISTRIBUIDORA')
+	DROP TABLE DISTRIBUIDORA
+go
+CREATE TABLE DISTRIBUIDORA (
+	id tinyint NOT NULL Identity(1,1),
+	Nombre varchar(20),
+	Direccion varchar(50),
+	Fax char(9) NULL,
+	Email varchar(60) null
+	
+	CONSTRAINT PK_DISTRIBUIDORA PRIMARY KEY (Id),
+	CONSTRAINT CK_Fax_DISTRIBUIDORA CHECK (Fax LIKE '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]')
+)
+go
+
+ALTER TABLE PELICULA
+	ADD Distribuidora tinyint
+go
+ALTER TABLE PELICULA
+	ADD CONSTRAINT FK_Distribuidora_PELICULA FOREIGN KEY (Distribuidora) REFERENCES DISTRIBUIDORA(Id)
+																	ON DELETE NO ACTION ON UPDATE CASCADE
+--5.2
+ALTER TABLE SOCIO
+	ADD Recomendador smallint NULL
+	
+ALTER TABLE Socio
+	ADD CONSTRAINT FK_SocioReocmendador_SOCIO FOREIGN KEY (Recomendador) 
+			REFERENCES Socio(Numero)ON DELETE SET NULL ON UPDATE CASCADE
+
+--6
+ALTER TABLE PELICULA
+	NOCHECK CONSTRAINT ALL
+go
+
+exec sp_helpconstraint PELICULA
+
+ALTER TABLE ALQUILER
+	NOCHECK CONSTRAINT ALL
+go
+
+exec sp_helpconstraint ALQUILER
+go
+
+ALTER TABLE PELICULA
+		CHECK CONSTRAINT ALL
+go
+ALTER TABLE ALQUILER
+	CHECK CONSTRAINT ALL
+go
